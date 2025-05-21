@@ -1,31 +1,32 @@
+
 "use client";
 
 import type { ReactNode } from 'react';
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/auth-context';
+// import { useEffect } from 'react'; // Auth check removed
+// import { useRouter } from 'next/navigation'; // Auth check removed
+// import { useAuth } from '@/contexts/auth-context'; // AppHeader still uses this implicitly
 import { AppHeader } from '@/components/app-header';
 import { AppSidebar } from '@/components/app-sidebar';
-import { Loader2 } from 'lucide-react';
+// import { Loader2 } from 'lucide-react'; // Auth check removed
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 
 export default function AppLayout({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+  // const { user, loading } = useAuth(); // Auth check removed
+  // const router = useRouter(); // Auth check removed
 
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login');
-    }
-  }, [user, loading, router]);
+  // useEffect(() => { // Auth check removed
+  //   if (!loading && !user) {
+  //     router.replace('/login');
+  //   }
+  // }, [user, loading, router]);
 
-  if (loading || !user) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // if (loading || !user) { // Auth check removed
+  //   return (
+  //     <div className="flex h-screen w-screen items-center justify-center bg-background">
+  //       <Loader2 className="h-12 w-12 animate-spin text-primary" />
+  //     </div>
+  //   );
+  // }
 
   return (
     <SidebarProvider defaultOpen>
