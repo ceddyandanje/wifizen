@@ -1,10 +1,11 @@
+
 "use client";
 
 import type { Device } from "@/types";
 import { DEVICE_ICONS } from "@/lib/mock-data";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertCircle, Edit3, MoreVertical, Trash2, Wifi, WifiOff, Download, Upload, Clock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -43,6 +44,7 @@ export function DeviceCard({ device, onForgetDevice, onUpdateDeviceName }: Devic
   };
   
   const formatConnectionTime = (minutes: number) => {
+    if (minutes < 0) return 'N/A';
     if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
     const mins = minutes % 60;
@@ -126,23 +128,24 @@ export function DeviceCard({ device, onForgetDevice, onUpdateDeviceName }: Devic
         onUpdateDeviceName={onUpdateDeviceName}
       />
       
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure you want to forget this device?</AlertDialogTitle>
-          <AlertDialogDescription>
-            Forgetting &quot;{device.name}&quot; will remove it from your list. You might need to re-authorize it on your router if you want to reconnect it later.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleForget} className={buttonVariants({ variant: "destructive" })}>
-            Forget Device
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+      <AlertDialog>
+        {/* This AlertDialog is separate because its trigger is inside DropdownMenu */}
+        {/* Its content will be implicitly managed by the DropdownMenuItem acting as AlertDialogTrigger */}
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to forget this device?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Forgetting &quot;{device.name}&quot; will remove it from your list. You might need to re-authorize it on your router if you want to reconnect it later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleForget} className={buttonVariants({ variant: "destructive" })}>
+              Forget Device
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
-
-// Helper function to match buttonVariants for AlertDialogAction
-const buttonVariants = Button.doNotUseThisPropToDetermineVariantsPlease;

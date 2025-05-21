@@ -1,10 +1,11 @@
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -46,27 +47,31 @@ export default function SubscriptionPage() {
     if (storedSubs) {
       try {
         const parsedSubs = JSON.parse(storedSubs).map((s: any) => ({...s, paymentDate: new Date(s.paymentDate)}));
-        setSubscriptions(parsedSubs);
+        setSubscriptions(parsedSubs.sort((a: Subscription,b: Subscription) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
       } catch (e) {
-        setSubscriptions(MOCK_SUBSCRIPTIONS.map(s => ({...s, paymentDate: new Date(s.paymentDate)})));
+        setSubscriptions(MOCK_SUBSCRIPTIONS.map(s => ({...s, paymentDate: new Date(s.paymentDate)})).sort((a,b) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
       }
     } else {
-      setSubscriptions(MOCK_SUBSCRIPTIONS.map(s => ({...s, paymentDate: new Date(s.paymentDate)})));
+      setSubscriptions(MOCK_SUBSCRIPTIONS.map(s => ({...s, paymentDate: new Date(s.paymentDate)})).sort((a,b) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
     }
   }, []);
 
   useEffect(() => {
-    if(subscriptions.length > 0 || localStorage.getItem("wifiZenSubscriptions")) { // only save if there's data or if it was previously saved (to clear it)
+    if(subscriptions.length > 0 || localStorage.getItem("wifiZenSubscriptions")) { 
         localStorage.setItem("wifiZenSubscriptions", JSON.stringify(subscriptions));
     }
   }, [subscriptions]);
 
   const form = useForm<SubscriptionFormValues>({
     resolver: zodResolver(subscriptionFormSchema),
+    defaultValues: {
+        name: "",
+        paymentDate: undefined,
+    }
   });
 
   function onSubmit(values: SubscriptionFormValues) {
-    const newSubscription = addMockSubscription(values); // Using mock function for now
+    const newSubscription = addMockSubscription(values); 
     setSubscriptions(prev => [...prev, newSubscription].sort((a,b) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
     form.reset({name: "", paymentDate: undefined});
     toast({ title: "Subscription Added", description: `${values.name} has been added to your tracker.` });
@@ -74,7 +79,7 @@ export default function SubscriptionPage() {
 
   const handleDeleteSubscription = (id: string) => {
     const subName = subscriptions.find(s => s.id === id)?.name || "Subscription";
-    removeMockSubscription(id); // Using mock function
+    removeMockSubscription(id); 
     setSubscriptions(prev => prev.filter(sub => sub.id !== id));
     toast({ title: "Subscription Removed", description: `${subName} has been removed.` });
   };
@@ -82,7 +87,7 @@ export default function SubscriptionPage() {
   const getDaysRemainingText = (paymentDate: Date) => {
     if (!isValid(paymentDate)) return "Invalid date";
     const today = new Date();
-    today.setHours(0,0,0,0); // Normalize today's date
+    today.setHours(0,0,0,0); 
     
     const daysRemaining = differenceInDays(paymentDate, today);
 
@@ -148,7 +153,7 @@ export default function SubscriptionPage() {
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date(new Date().setDate(new Date().getDate()-1)) } // disable past dates
+                          disabled={(date) => date < new Date(new Date().setDate(new Date().getDate()-1)) } 
                           initialFocus
                         />
                       </PopoverContent>
@@ -196,7 +201,7 @@ export default function SubscriptionPage() {
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleDeleteSubscription(sub.id)} className={cn(Button.prototype.variant === "destructive" ? "" : "bg-destructive hover:bg-destructive/90 text-destructive-foreground")}>
+                          <AlertDialogAction onClick={() => handleDeleteSubscription(sub.id)} className={buttonVariants({ variant: "destructive" })}>
                             Delete
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -208,8 +213,8 @@ export default function SubscriptionPage() {
                 <CardContent>
                   <p className={cn(
                       "text-lg font-semibold",
-                      differenceInDays(sub.paymentDate, new Date()) < 0 ? "text-destructive" :
-                      differenceInDays(sub.paymentDate, new Date()) < 7 ? "text-yellow-500" : "text-green-600"
+                      differenceInDays(sub.paymentDate, new Date(new Date().setHours(0,0,0,0))) < 0 ? "text-destructive" :
+                      differenceInDays(sub.paymentDate, new Date(new Date().setHours(0,0,0,0))) < 7 ? "text-yellow-500" : "text-green-600"
                     )}>
                     {getDaysRemainingText(sub.paymentDate)}
                   </p>
@@ -222,3 +227,4 @@ export default function SubscriptionPage() {
     </div>
   );
 }
+

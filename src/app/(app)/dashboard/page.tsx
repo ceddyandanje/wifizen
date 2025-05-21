@@ -1,3 +1,4 @@
+
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -5,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MOCK_DEVICES, MOCK_INTERNET_STATUS, MOCK_NETWORK_METRICS, DEVICE_ICONS } from "@/lib/mock-data";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Wifi, Users, BarChartHorizontalBig, Signal, AlertTriangle, Download, Upload, WifiOff, Thermometer, Zap } from "lucide-react";
+import { ArrowRight, Wifi, Users, BarChartHorizontalBig, Signal, AlertTriangle, Download, Upload, WifiOff, Thermometer, Zap, HelpCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -79,9 +80,9 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">{onlineDevices} <span className="text-base font-normal text-muted-foreground">/ {totalDevices} total</span></div>
             <p className="text-xs text-muted-foreground mt-1">
-              {((onlineDevices / totalDevices) * 100).toFixed(0)}% of devices online
+              {totalDevices > 0 ? ((onlineDevices / totalDevices) * 100).toFixed(0) : 0}% of devices online
             </p>
-            <Progress value={(onlineDevices / totalDevices) * 100} className="mt-2 h-2" />
+            <Progress value={totalDevices > 0 ? (onlineDevices / totalDevices) * 100 : 0} className="mt-2 h-2" />
           </CardContent>
         </Card>
 
@@ -122,18 +123,18 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {MOCK_DEVICES.slice(0, 3).map((device) => {
-              const Icon = device.icon || HelpCircle;
+              const IconComponent = device.icon || HelpCircle;
               return (
                 <div key={device.id} className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg hover:bg-secondary/60 transition-colors">
                   <div className="flex items-center gap-3">
-                    <Icon className="h-8 w-8 text-primary" />
+                    <IconComponent className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-medium">{device.name}</p>
                       <p className="text-xs text-muted-foreground">{device.manufacturer} {device.model}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                     <Badge variant={device.status === 'Online' ? 'default' : 'destructive'} className="capitalize bg-green-500 hover:bg-green-600 text-primary-foreground">
+                     <Badge variant={device.status === 'Online' ? 'default' : 'destructive'} className={device.status === 'Online' ? "bg-green-500 hover:bg-green-600 text-primary-foreground" : ""}>
                         {device.status}
                      </Badge>
                     <p className="text-xs text-muted-foreground mt-1">{device.bandwidthUsage.download.toFixed(1)} Mbps Down</p>
@@ -194,3 +195,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

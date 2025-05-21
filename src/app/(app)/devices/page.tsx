@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -18,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[]>(MOCK_DEVICES);
@@ -109,7 +111,7 @@ export default function DevicesPage() {
                 <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Sort Options</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    <DropdownMenuRadioGroup value={sortOption} onValueChange={setSortOption}>
+                    <DropdownMenuRadioGroup value={sortOption} onValueChange={(value) => setSortOption(value as any)}>
                         <DropdownMenuRadioItem value="name-asc">Name (A-Z)</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="name-desc">Name (Z-A)</DropdownMenuRadioItem>
                         <DropdownMenuRadioItem value="status">Status (Online First)</DropdownMenuRadioItem>
@@ -142,3 +144,4 @@ export default function DevicesPage() {
     </div>
   );
 }
+
