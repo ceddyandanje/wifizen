@@ -6,7 +6,7 @@ async function fetchInternetStatus(): Promise<InternetStatus> {
   // 1. Try router API
   try {
     const routerConfig = {
-      host: process.env.ROUTER_HOST || '192.168.1.1',
+      host: process.env.ROUTER_HOST || '192.168.100.1',
       username: process.env.ROUTER_USERNAME,
       password: process.env.ROUTER_PASSWORD,
       apiEndpoint: process.env.ROUTER_STATUS_API_ENDPOINT || '/api/status'
