@@ -1,3 +1,4 @@
+
 import type { Device, NetworkMetric, Subscription } from '@/types';
 import { Laptop, Smartphone, Tablet, Tv2, Router as RouterIcon, ToyBrick, HelpCircle, Wifi, WifiOff, CloudLightning, ServerCrash } from 'lucide-react';
 
@@ -11,7 +12,7 @@ export const DEVICE_ICONS: Record<Device['deviceType'], React.ElementType> = {
   unknown: HelpCircle,
 };
 
-export const MOCK_DEVICES: Device[] = [
+export let MOCK_DEVICES: Device[] = [
   {
     id: '1',
     name: 'Living Room TV',
@@ -95,9 +96,10 @@ export const MOCK_DEVICES: Device[] = [
   },
 ];
 
-export const MOCK_SUBSCRIPTIONS: Subscription[] = [
-  { id: 'sub1', name: 'Netflix Premium', paymentDate: new Date(new Date().getFullYear(), new Date().getMonth(), 15) },
-  { id: 'sub2', name: 'Spotify Family', paymentDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1) },
+export let MOCK_SUBSCRIPTIONS: Subscription[] = [
+  { id: 'sub1', name: 'Wifi Payment', paymentDate: new Date(new Date().getFullYear(), new Date().getMonth(), 5) }, // Wifi payment, due soon
+  { id: 'sub2', name: 'Netflix Premium', paymentDate: new Date(new Date().getFullYear(), new Date().getMonth(), 15) },
+  { id: 'sub3', name: 'Spotify Family', paymentDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1) },
 ];
 
 
@@ -163,31 +165,69 @@ export const updateMockDeviceName = (id: string, newName: string): boolean => {
   if (deviceIndex > -1) {
     MOCK_DEVICES[deviceIndex].name = newName;
     MOCK_DEVICES[deviceIndex].userProvidedName = newName;
+    // To reflect changes if user is navigating between pages and MOCK_DEVICES is re-imported
+    // This is a simple way to persist for the session in a mock environment
+    // For a real app, this would be an API call.
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('wifiZenDevices', JSON.stringify(MOCK_DEVICES));
+    }
     return true;
   }
   return false;
 };
 
 export const forgetMockDevice = (id: string): boolean => {
-  const deviceIndex = MOCK_DEVICES.findIndex(d => d.id === id);
-  if (deviceIndex > -1) {
-    MOCK_DEVICES.splice(deviceIndex, 1);
-    return true;
-  }
-  return false;
+  const initialLength = MOCK_DEVICES.length;
+  MOCK_DEVICES = MOCK_DEVICES.filter(d => d.id !== id);
+   if (typeof localStorage !== 'undefined' && MOCK_DEVICES.length !== initialLength) {
+        localStorage.setItem('wifiZenDevices', JSON.stringify(MOCK_DEVICES));
+    }
+  return MOCK_DEVICES.length !== initialLength;
 };
 
 export const addMockSubscription = (subscription: Omit<Subscription, 'id'>): Subscription => {
   const newSub: Subscription = { ...subscription, id: `sub${Date.now()}`};
   MOCK_SUBSCRIPTIONS.push(newSub);
+   if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('wifiZenSubscriptions', JSON.stringify(MOCK_SUBSCRIPTIONS));
+    }
   return newSub;
 }
 
 export const removeMockSubscription = (id: string): boolean => {
-  const subIndex = MOCK_SUBSCRIPTIONS.findIndex(s => s.id === id);
-  if (subIndex > -1) {
-    MOCK_SUBSCRIPTIONS.splice(subIndex, 1);
-    return true;
+  const initialLength = MOCK_SUBSCRIPTIONS.length;
+  MOCK_SUBSCRIPTIONS = MOCK_SUBSCRIPTIONS.filter(s => s.id !== id);
+  if (typeof localStorage !== 'undefined' && MOCK_SUBSCRIPTIONS.length !== initialLength) {
+        localStorage.setItem('wifiZenSubscriptions', JSON.stringify(MOCK_SUBSCRIPTIONS));
   }
-  return false;
+  return MOCK_SUBSCRIPTIONS.length !== initialLength;
 }
+
+// Function to initialize mock data from localStorage or defaults
+// This can be called in a global context or at the start of relevant pages
+export const initializeMockData = () => {
+  if (typeof localStorage !== 'undefined') {
+    const storedDevices = localStorage.getItem('wifiZenDevices');
+    if (storedDevices) {
+      try {
+        MOCK_DEVICES = JSON.parse(storedDevices).map((d: any) => ({
+            ...d,
+            // Ensure icon is rehydrated correctly if it's stored as string name
+            icon: d.deviceType ? DEVICE_ICONS[d.deviceType as keyof typeof DEVICE_ICONS] || HelpCircle : HelpCircle,
+        }));
+      } catch (e) { console.error("Failed to parse devices from localStorage", e); }
+    }
+
+    const storedSubs = localStorage.getItem('wifiZenSubscriptions');
+    if (storedSubs) {
+       try {
+        MOCK_SUBSCRIPTIONS = JSON.parse(storedSubs).map((s: any) => ({...s, paymentDate: new Date(s.paymentDate)}));
+      } catch (e) { console.error("Failed to parse subscriptions from localStorage", e); }
+    }
+  }
+};
+
+// Call initialization when this module is loaded.
+// This is a simple way to ensure data is loaded from localStorage if available.
+// initializeMockData(); // Removed direct call to avoid issues in server components if not guarded
+

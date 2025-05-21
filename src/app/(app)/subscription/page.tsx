@@ -13,7 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, PlusCircle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, differenceInDays, isValid } from "date-fns";
+import { format, differenceInDays, isValid, parseISO } from "date-fns";
 import type { Subscription } from "@/types";
 import { MOCK_SUBSCRIPTIONS, addMockSubscription, removeMockSubscription } from "@/lib/mock-data";
 import { useToast } from "@/hooks/use-toast";
@@ -44,21 +44,40 @@ export default function SubscriptionPage() {
   useEffect(() => {
     // Load subscriptions from localStorage or use mock
     const storedSubs = localStorage.getItem("wifiZenSubscriptions");
+    let initialSubs: Subscription[];
+
     if (storedSubs) {
       try {
-        const parsedSubs = JSON.parse(storedSubs).map((s: any) => ({...s, paymentDate: new Date(s.paymentDate)}));
-        setSubscriptions(parsedSubs.sort((a: Subscription,b: Subscription) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
+        // Ensure date objects are correctly parsed
+        initialSubs = JSON.parse(storedSubs).map((s: any) => ({
+          ...s,
+          paymentDate: s.paymentDate ? new Date(parseISO(s.paymentDate)) : new Date(),
+        }));
       } catch (e) {
-        setSubscriptions(MOCK_SUBSCRIPTIONS.map(s => ({...s, paymentDate: new Date(s.paymentDate)})).sort((a,b) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
+        console.error("Failed to parse subscriptions from localStorage, using mocks:", e);
+        initialSubs = MOCK_SUBSCRIPTIONS.map(s => ({
+          ...s,
+          paymentDate: s.paymentDate ? new Date(s.paymentDate) : new Date(),
+        }));
       }
     } else {
-      setSubscriptions(MOCK_SUBSCRIPTIONS.map(s => ({...s, paymentDate: new Date(s.paymentDate)})).sort((a,b) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
+      initialSubs = MOCK_SUBSCRIPTIONS.map(s => ({
+        ...s,
+        paymentDate: s.paymentDate ? new Date(s.paymentDate) : new Date(),
+      }));
     }
+    
+    setSubscriptions(initialSubs.sort((a,b) => differenceInDays(a.paymentDate, new Date()) - differenceInDays(b.paymentDate, new Date())));
   }, []);
 
   useEffect(() => {
-    if(subscriptions.length > 0 || localStorage.getItem("wifiZenSubscriptions")) { 
-        localStorage.setItem("wifiZenSubscriptions", JSON.stringify(subscriptions));
+    // Persist subscriptions to localStorage whenever they change,
+    // but only if it's not the initial empty state before MOCK_SUBSCRIPTIONS are loaded.
+    if (subscriptions.length > 0 || localStorage.getItem("wifiZenSubscriptions")) { 
+        // Store dates as ISO strings for reliable parsing
+        localStorage.setItem("wifiZenSubscriptions", JSON.stringify(
+            subscriptions.map(s => ({...s, paymentDate: s.paymentDate.toISOString()}))
+        ));
     }
   }, [subscriptions]);
 
@@ -208,13 +227,13 @@ export default function SubscriptionPage() {
                       </AlertDialogContent>
                     </AlertDialog>
                   </CardTitle>
-                  <CardDescription>Next payment on: {format(sub.paymentDate, "MMMM dd, yyyy")}</CardDescription>
+                  <CardDescription>Next payment on: {isValid(sub.paymentDate) ? format(sub.paymentDate, "MMMM dd, yyyy") : "Invalid Date"}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <p className={cn(
                       "text-lg font-semibold",
-                      differenceInDays(sub.paymentDate, new Date(new Date().setHours(0,0,0,0))) < 0 ? "text-destructive" :
-                      differenceInDays(sub.paymentDate, new Date(new Date().setHours(0,0,0,0))) < 7 ? "text-yellow-500" : "text-green-600"
+                      isValid(sub.paymentDate) && differenceInDays(sub.paymentDate, new Date(new Date().setHours(0,0,0,0))) < 0 ? "text-destructive" :
+                      isValid(sub.paymentDate) && differenceInDays(sub.paymentDate, new Date(new Date().setHours(0,0,0,0))) < 7 ? "text-yellow-500" : "text-green-600"
                     )}>
                     {getDaysRemainingText(sub.paymentDate)}
                   </p>
