@@ -1,14 +1,14 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { Device } from "@/types";
-import { MOCK_DEVICES, updateMockDeviceName, forgetMockDevice as apiForgetDevice } from "@/lib/mock-data";
+import { updateMockDeviceName, forgetMockDevice as apiForgetDeviceFromMock } from "@/lib/mock-data"; // Keep for underlying data manipulation
 import { DeviceCard } from "@/components/device-card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { ListFilter, LayoutGrid, LayoutList, ArrowDownUp } from "lucide-react";
+import { ListFilter, LayoutGrid, LayoutList, ArrowDownUp, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,34 +20,82 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 export default function DevicesPage() {
-  const [devices, setDevices] = useState<Device[]>(MOCK_DEVICES);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "Online" | "Offline">("all");
   const [sortOption, setSortOption] = useState<"name-asc" | "name-desc" | "status" | "connectionTime-desc">("name-asc");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchDevices() {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/devices');
+        if (!response.ok) throw new Error('Failed to fetch devices');
+        const data = await response.json();
+        setDevices(data.devices || []); // Assuming API returns { devices: Device[] }
+      } catch (error) {
+        console.error("Failed to fetch devices:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not load devices." });
+        setDevices([]); // Set to empty array on error
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchDevices();
+  }, [toast]);
 
 
-  const handleUpdateDeviceName = (deviceId: string, newName: string) => {
-    updateMockDeviceName(deviceId, newName); // This updates the mock data in-place
-    setDevices(prevDevices => 
-      prevDevices.map(d => d.id === deviceId ? { ...d, name: newName, userProvidedName: newName } : d)
-    );
+  const handleUpdateDeviceName = async (deviceId: string, newName: string) => {
+    try {
+      const response = await fetch(`/api/devices/${deviceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (!response.ok) throw new Error('Failed to update device name via API');
+      
+      // Update mock data and local state (simulating backend persistence)
+      updateMockDeviceName(deviceId, newName); 
+      setDevices(prevDevices => 
+        prevDevices.map(d => d.id === deviceId ? { ...d, name: newName, userProvidedName: newName } : d)
+      );
+      // Toast is handled in RenameDeviceDialog
+    } catch (error) {
+      console.error("API Error updating device name:", error);
+      toast({ variant: "destructive", title: "API Error", description: "Could not update device name on server." });
+    }
   };
 
-  const handleForgetDevice = (deviceId: string) => {
-    apiForgetDevice(deviceId); // This updates the mock data in-place
-    setDevices(prevDevices => prevDevices.filter(d => d.id !== deviceId));
+  const handleForgetDevice = async (deviceId: string) => {
+    try {
+      const response = await fetch(`/api/devices/${deviceId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to forget device via API');
+
+      // Update mock data and local state (simulating backend persistence)
+      apiForgetDeviceFromMock(deviceId); 
+      setDevices(prevDevices => prevDevices.filter(d => d.id !== deviceId));
+      // Toast is handled in DeviceCard
+    } catch (error) {
+        console.error("API Error forgetting device:", error);
+        toast({ variant: "destructive", title: "API Error", description: "Could not forget device on server." });
+    }
   };
   
   const filteredAndSortedDevices = useMemo(() => {
-    let processedDevices = devices.filter(device => {
+    let processedDevices = [...devices].filter(device => {
       const matchesSearch = device.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             device.manufacturer.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             device.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            device.ipAddress.includes(searchTerm) ||
-                            device.macAddress.toLowerCase().includes(searchTerm.toLowerCase());
+                            (device.ipAddress && device.ipAddress.includes(searchTerm)) ||
+                            (device.macAddress && device.macAddress.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesStatus = filterStatus === "all" || device.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -63,11 +111,19 @@ export default function DevicesPage() {
         processedDevices.sort((a, b) => (a.status === "Online" ? -1 : 1) - (b.status === "Online" ? -1 : 1) || a.name.localeCompare(b.name));
         break;
       case "connectionTime-desc":
-         processedDevices.sort((a,b) => b.connectionTime - a.connectionTime);
+         processedDevices.sort((a,b) => (b.connectionTime || 0) - (a.connectionTime || 0));
          break;
     }
     return processedDevices;
   }, [devices, searchTerm, filterStatus, sortOption]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -144,4 +200,3 @@ export default function DevicesPage() {
     </div>
   );
 }
-

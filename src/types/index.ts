@@ -1,3 +1,4 @@
+
 import type { LucideIcon } from 'lucide-react';
 
 export interface Device {
@@ -15,23 +16,37 @@ export interface Device {
     upload: number; // Mbps
   };
   userProvidedName?: string;
-  icon?: LucideIcon;
+  icon?: LucideIcon; // This will be difficult to serialize/deserialize if fetched from an API, consider string icon name
 }
 
 export interface Subscription {
   id: string;
   name: string;
-  paymentDate: Date;
+  paymentDate: Date; // Will be string if fetched from API, needs conversion
 }
 
 export interface NetworkMetricDataPoint {
-  time: string; // e.g., "10:00"
+  time: string; // e.g., "10:00" or "Mon"
   value: number;
 }
 
 export interface NetworkMetric {
   id: string;
-  name: string; // e.g., "Latency (ms)", "Packet Loss (%)", "Upload Speed (Mbps)", "Download Speed (Mbps)"
+  name: string;
   data: NetworkMetricDataPoint[];
   unit: string;
+}
+
+export interface InternetStatus {
+  speed: {
+    download: number; // Mbps
+    upload: number;   // Mbps
+  };
+  health: 'Stable' | 'Intermittent' | 'Offline';
+  // Icon can be determined on client-side based on health
+}
+
+export interface DeviceTypeDistribution {
+  type: Device['deviceType'];
+  count: number;
 }

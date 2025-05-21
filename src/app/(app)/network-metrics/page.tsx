@@ -1,17 +1,18 @@
+
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MOCK_NETWORK_METRICS } from "@/lib/mock-data";
-import type { NetworkMetric, NetworkMetricDataPoint } from "@/types";
+import type { NetworkMetric } from "@/types";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from "recharts";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, Activity, BarChart2 } from "lucide-react";
+import { TrendingUp, Activity, BarChart2, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const chartColors = [
   "hsl(var(--chart-1))",
@@ -21,27 +22,42 @@ const chartColors = [
   "hsl(var(--chart-5))",
 ];
 
-const getChartConfig = (metric: NetworkMetric) => ({
+const getChartConfig = (metric: NetworkMetric, allMetrics: NetworkMetric[]) => ({
   [metric.id]: {
     label: metric.name,
-    color: chartColors[MOCK_NETWORK_METRICS.findIndex(m => m.id === metric.id) % chartColors.length],
+    color: chartColors[allMetrics.findIndex(m => m.id === metric.id) % chartColors.length],
   },
 });
 
 export default function NetworkMetricsPage() {
-  const [timeRange, setTimeRange] = useState("last-hour"); // example: 'last-hour', 'last-24-hours', 'last-7-days'
-  
-  // This would typically fetch data based on timeRange. For now, we use all mock data.
-  const metricsData = useMemo(() => {
-    // In a real app, you'd filter or re-fetch data based on timeRange
-    return MOCK_NETWORK_METRICS;
-  }, [timeRange]);
+  const [timeRange, setTimeRange] = useState("last-hour");
+  const [metricsData, setMetricsData] = useState<NetworkMetric[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    async function fetchMetrics() {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/network-metrics?timeRange=${timeRange}`);
+        if (!response.ok) throw new Error('Failed to fetch network metrics');
+        const data = await response.json();
+        setMetricsData(data.metrics || []); // Assuming API returns { metrics: NetworkMetric[] }
+      } catch (error) {
+        console.error("Failed to fetch network metrics:", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not load network metrics." });
+        setMetricsData([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchMetrics();
+  }, [timeRange, toast]);
 
   const renderChart = (metric: NetworkMetric) => {
-    const chartConfig = getChartConfig(metric);
-    // Simple heuristic to decide chart type
-    const ChartComponent = metric.id === "totalDownload" ? BarChart : LineChart;
-    const DataComponent = metric.id === "totalDownload" ? Bar : Line;
+    const chartConfig = getChartConfig(metric, metricsData);
+    const ChartComponent = metric.id === "totalDownload" || metric.id === "totalUpload" ? BarChart : LineChart;
+    const DataComponent = metric.id === "totalDownload" || metric.id === "totalUpload" ? Bar : Line;
 
     return (
       <Card key={metric.id} className="shadow-lg hover:shadow-xl transition-shadow">
@@ -62,7 +78,7 @@ export default function NetworkMetricsPage() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="time" tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" fontSize={12} />
                 <YAxis tickLine={false} axisLine={false} stroke="hsl(var(--muted-foreground))" fontSize={12} 
-                       domain={metric.id === "packetLoss" ? [0, 'auto'] : undefined} // Ensure packet loss starts at 0
+                       domain={metric.id === "packetLoss" ? [0, 'auto'] : undefined}
                 />
                 <ChartTooltip
                   cursor={false}
@@ -72,7 +88,7 @@ export default function NetworkMetricsPage() {
                   dataKey="value"
                   type="monotone"
                   stroke={chartConfig[metric.id].color}
-                  fill={chartConfig[metric.id].color} // For BarChart
+                  fill={chartConfig[metric.id].color}
                   strokeWidth={2}
                   dot={{ r: 3, fill: chartConfig[metric.id].color }}
                   activeDot={{ r: 5 }}
@@ -84,6 +100,14 @@ export default function NetworkMetricsPage() {
       </Card>
     );
   };
+  
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-[calc(100vh-200px)]">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -107,10 +131,10 @@ export default function NetworkMetricsPage() {
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         {metricsData.map(metric => renderChart(metric))}
       </div>
-       {metricsData.length === 0 && (
-        <Card className="text-center py-10">
+       {metricsData.length === 0 && !loading && (
+        <Card className="text-center py-10 col-span-full">
           <CardContent>
-            <p className="text-muted-foreground">No metrics data available for the selected range.</p>
+            <p className="text-muted-foreground">No metrics data available for the selected range, or failed to load.</p>
           </CardContent>
         </Card>
       )}
